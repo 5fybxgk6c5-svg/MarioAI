@@ -5,13 +5,10 @@ import ch.idsia.agents.controllers.RuleBaseAgent;
 import ch.idsia.benchmark.mario.engine.sprites.Mario;
 import ch.idsia.benchmark.mario.environments.Environment;
 
-/**
- * A* を使って Mario を操作するエージェント。
- * - RuleBaseAgent を継承することで Mario の状態取得が非常に簡単になる。
- * - 毎フレーム LevelMap / EnemyMap を構築して Planner に渡す。
- * - Planner から返ってきた ACT_* をゲームのキー入力に変換して実行。
- */
 public class AStarAgent extends RuleBaseAgent implements Agent {
+
+    // ★ デバッグフラグ：状況を詳しく見たいとき true にする
+    private static final boolean DEBUG = true;
 
     public AStarAgent() {
         super("AStarAgent");
@@ -27,15 +24,12 @@ public class AStarAgent extends RuleBaseAgent implements Agent {
         boolean onGround   = isMarioOnGround();
         boolean ableToJump = isMarioAbleToJump();
 
-        // 受容野 (19×19)
         byte[][] scene = getScene();
         LevelMap level = new LevelMap(scene);
 
         // 敵マップ（簡易）
         EnemyMap enemies = new EnemyMap(scene.length, scene[0].length);
-        // MarioAI では敵は getEnemiesCellValue から読める
-        // → AStarPlanner 内で「敵踏み」が必要な場合のみ利用される
-
+        // ★必要ならここで getEnemiesCellValue を走査して EnemyMap に詰めてもよい
 
         // === 2) センサー取得 ===
         StateSensors sensors = new StateSensors(this);
@@ -49,13 +43,25 @@ public class AStarAgent extends RuleBaseAgent implements Agent {
                 sensors.enemyAhead
         );
 
-        // === 3) A* プランナーを作成 ===
-        AStarPlanner planner = new AStarPlanner(level, enemies);
+        if (DEBUG) {
+            System.out.println("===== AStarAgent.getAction() =====");
+            System.out.println("Mario pos   : row=" + row + ", col=" + col);
+            System.out.println("onGround    : " + onGround + ", ableToJump=" + ableToJump);
+            System.out.println("Sensors     : " + sensors);
+            System.out.println("MarioState  : " + state);
+        }
 
-        // === 4) A* により「次に取るべき行動」を 1 手だけ取得 ===
+        // === 3) A* プランナーを作成（DEBUG=true） ===
+        AStarPlanner planner = new AStarPlanner(level, enemies, DEBUG);
+
+        // === 4) A* で 1 手だけ計画 ===
         int act = planner.plan(state);
 
-        // === 5) A* の ACT_* を Mario のキー配列に変換 ===
+        if (DEBUG) {
+            System.out.println("A* decided act = " + actToString(act));
+        }
+
+        // === 5) ACT_* → キー入力 ===
         boolean[] action = new boolean[Environment.numberOfKeys];
 
         switch (act) {
@@ -85,13 +91,42 @@ public class AStarAgent extends RuleBaseAgent implements Agent {
 
             case AStarPlanner.ACT_NONE:
             default:
-                // 何もしない（落下防止）
+                // 何もしない（ただし即死しそうなら保険ジャンプ）
                 if (onGround && sensors.gapDistance == 1) {
-                    action[Mario.KEY_JUMP] = true; // その場ジャンプで生存優先
+                    action[Mario.KEY_JUMP] = true;
+                    if (DEBUG) {
+                        System.out.println("ACT_NONE but gapDistance==1 → 保険ジャンプ");
+                    }
+                } else {
+                    if (DEBUG) {
+                        System.out.println("ACT_NONE → その場維持");
+                    }
                 }
                 break;
         }
 
+        if (DEBUG) {
+            System.out.print("Output keys :");
+            if (action[Mario.KEY_LEFT])  System.out.print(" L");
+            if (action[Mario.KEY_RIGHT]) System.out.print(" R");
+            if (action[Mario.KEY_JUMP])  System.out.print(" J");
+            if (action[Mario.KEY_SPEED]) System.out.print(" S");
+            System.out.println();
+            System.out.println("==================================");
+        }
+
         return action;
+    }
+
+    private String actToString(int act) {
+        switch (act) {
+            case AStarPlanner.ACT_NONE:      return "NONE";
+            case AStarPlanner.ACT_RIGHT:     return "RIGHT";
+            case AStarPlanner.ACT_LEFT:      return "LEFT";
+            case AStarPlanner.ACT_JUMP:      return "JUMP";
+            case AStarPlanner.ACT_RUN_RIGHT: return "RUN_RIGHT";
+            case AStarPlanner.ACT_JUMP_RUN:  return "JUMP_RUN";
+        }
+        return "UNKNOWN(" + act + ")";
     }
 }

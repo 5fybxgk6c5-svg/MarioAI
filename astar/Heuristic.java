@@ -1,42 +1,40 @@
 package ch.idsia.agents.astar;
 
-/**
- * A* 探索で用いるヒューリスティック関数。
- *
- * 「f = g + h」の h 部分を計算する。
- * 値が小さいノードほど優先される前提なので、
- * ・前進 = h を小さく（＝負方向に大きく）
- * ・壁/穴/敵 = h を大きく（ペナルティ）
- * という符号にしている。
- */
 public class Heuristic {
 
-    /**
-     * 状態 s のヒューリスティック値 h を返す。
-     * 値が小さいほど「好ましい」状態。
-     */
+    // 必要に応じて on/off
+    private static final boolean DEBUG = true;
+
     public float evaluate(MarioState s) {
 
-        float h = 0.0f;
+        float h = 0;
 
-        // ① 前進ボーナス（列が大きいほどゴールに近い）
-        //   col が大きいほど h がより負になる（＝優先度↑）
-        h += -(s.col) * 5.0f;
+        float forward = -(s.col) * 5.0f;
+        h += forward;
 
-        // ② 壁ペナルティ
-        //   壁が近いほどペナルティを大きくする
+        float wallTerm = 0;
         if (s.wallDistance >= 0) {
-            h += (8 - s.wallDistance) * 3.0f;
+            wallTerm = (8 - s.wallDistance) * 3.0f;
+            h += wallTerm;
         }
 
-        // ③ 穴ペナルティ（重め）
+        float gapTerm = 0;
         if (s.gapDistance >= 0) {
-            h += (8 - s.gapDistance) * 6.0f;
+            gapTerm = (8 - s.gapDistance) * 6.0f;
+            h += gapTerm;
         }
 
-        // ④ 敵ペナルティ
+        float enemyTerm = 0;
         if (s.enemyDistance >= 0) {
-            h += (6 - s.enemyDistance) * 4.0f;
+            enemyTerm = (6 - s.enemyDistance) * 4.0f;
+            h += enemyTerm;
+        }
+
+        if (DEBUG) {
+            System.out.println(String.format(
+                    " [H] state=%s  h=%.2f (forward=%.2f, wall=%.2f, gap=%.2f, enemy=%.2f)",
+                    s, h, forward, wallTerm, gapTerm, enemyTerm
+            ));
         }
 
         return h;
