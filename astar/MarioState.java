@@ -1,65 +1,68 @@
 package ch.idsia.agents.astar;
 
+/**
+ * A* 用に抽象化した「マリオの状態」クラス。
+ * - 位置（row, col）
+ * - 地上/空中フラグ
+ * - ジャンプ可能フラグ
+ * - センサー情報（壁・穴・敵）
+ *
+ * AStarNode からの比較・ハッシュ計算に使うため、
+ * equals / hashCode / toString を実装している。
+ */
 public class MarioState {
 
+    // 受容野内でのマリオ位置（タイル座標）
     public int row;
     public int col;
 
+    // マリオの状態
     public boolean onGround;
     public boolean ableToJump;
 
-    public int wallDistance;
-    public int gapDistance;
-    public int enemyDistance;
+    // センサー情報
+    // - wallDistance : 前方にある最初の壁までの距離（タイル）。なければ -1。
+    // - gapDistance  : 前方にある最初の穴までの距離（タイル）。なければ -1。
+    // - enemyDistance: 前方にいる最初の敵までの距離（タイル）。なければ -1。
+    // - enemyAhead   : 前方に敵がいるかどうか
+    public int  wallDistance;
+    public int  gapDistance;
+    public int  enemyDistance;
     public boolean enemyAhead;
 
-    /** B用：位置と地面状態だけ指定する簡易コンストラクタ */
-    public MarioState(int row, int col, boolean onGround, boolean ableToJump) {
-        this.row = row;
-        this.col = col;
-        this.onGround = onGround;
-        this.ableToJump = ableToJump;
+    // ==========================================================
+    // コンストラクタ
+    // ==========================================================
 
-        // 残りの特徴量は「未使用」の意味で -1 / false にしておく
-        this.wallDistance  = -1;
-        this.gapDistance   = -1;
-        this.enemyDistance = -1;
-        this.enemyAhead    = false;
-    }
-
-    /** 従来のフルコンストラクタ（必要ならこのまま残す） */
     public MarioState(int row, int col,
-                      boolean onGround,
-                      boolean ableToJump,
-                      int wallDistance,
-                      int gapDistance,
-                      int enemyDistance,
+                      boolean onGround, boolean ableToJump,
+                      int wallDistance, int gapDistance, int enemyDistance,
                       boolean enemyAhead) {
-
         this.row = row;
         this.col = col;
         this.onGround = onGround;
         this.ableToJump = ableToJump;
-
         this.wallDistance = wallDistance;
         this.gapDistance = gapDistance;
         this.enemyDistance = enemyDistance;
         this.enemyAhead = enemyAhead;
     }
 
-    /** ディープコピー */
+    /** コピーコンストラクタ（AStarNode からのディープコピー用） */
     public MarioState(MarioState other) {
-        this.row = other.row;
-        this.col = other.col;
-
-        this.onGround = other.onGround;
-        this.ableToJump = other.ableToJump;
-
-        this.wallDistance = other.wallDistance;
-        this.gapDistance = other.gapDistance;
+        this.row           = other.row;
+        this.col           = other.col;
+        this.onGround      = other.onGround;
+        this.ableToJump    = other.ableToJump;
+        this.wallDistance  = other.wallDistance;
+        this.gapDistance   = other.gapDistance;
         this.enemyDistance = other.enemyDistance;
-        this.enemyAhead = other.enemyAhead;
+        this.enemyAhead    = other.enemyAhead;
     }
+
+    // ==========================================================
+    // equals / hashCode / toString
+    // ==========================================================
 
     @Override
     public boolean equals(Object obj) {
@@ -97,6 +100,7 @@ public class MarioState {
                 ", wall=" + wallDistance +
                 ", gap=" + gapDistance +
                 ", enemy=" + enemyDistance +
+                ", enemyAhead=" + enemyAhead +
                 " }";
     }
 }

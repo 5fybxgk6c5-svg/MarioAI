@@ -123,8 +123,7 @@ public class SimulatorTest {
         // 壁があるので動作失敗（null）
         assertNull(next);
     }
-
-    //━━━━━━━━━━━━━━━━━━━━━━━
+  //━━━━━━━━━━━━━━━━━━━━━━━
     // 6. 敵踏み（stomp）
     //━━━━━━━━━━━━━━━━━━━━━━━
     @Test
@@ -147,4 +146,5 @@ public class SimulatorTest {
         assertEquals(17, next.row);
         assertEquals(7, next.col);
     }
+    
 }

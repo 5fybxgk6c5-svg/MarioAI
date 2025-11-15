@@ -3,7 +3,7 @@ package ch.idsia.agents.astar;
 /**
  * A* 探索で使用される「状態ノード」。
  * MarioState（抽象化した状態）を持ち、
- * g,h,f のコストと親ノード情報を保持する。
+ * g, h, f のコストと親ノード情報を保持する。
  */
 public class AStarNode implements Comparable<AStarNode> {
 
@@ -13,19 +13,29 @@ public class AStarNode implements Comparable<AStarNode> {
     // A* の経路復元用
     public AStarNode parent;
 
-    // このノードに来るために実行したアクション
-    public int action;   // 0=右,1=ジャンプ,2=右ダッシュ,3=左,4=その場 など
+    /**
+     * このノードに来るために実行したアクション。
+     * AStarPlanner の ACT_* 定数を使う:
+     *   ACT_NONE      = 0
+     *   ACT_RIGHT     = 1
+     *   ACT_LEFT      = 2
+     *   ACT_JUMP      = 3
+     *   ACT_RUN_RIGHT = 4
+     *   ACT_JUMP_RUN  = 5
+     */
+    public int action;
 
     // A* コスト
-    public float g;   // スタートから現在まで
-    public float h;   // 現在 → ゴール推定
+    public float g;   // スタートから現在までの実コスト
+    public float h;   // 現在 → ゴールまでの推定コスト（ヒューリスティック）
     public float f;   // f = g + h
 
     // ==========================================================
     // コンストラクタ
     // ==========================================================
     public AStarNode(MarioState state, AStarNode parent, int action, float g, float h) {
-        this.state = new MarioState(state); // ← ディープコピーで安全
+        // State はコピーして持っておく（外部から書き換えられないように）
+        this.state  = new MarioState(state);
         this.parent = parent;
         this.action = action;
 
@@ -44,7 +54,7 @@ public class AStarNode implements Comparable<AStarNode> {
 
     // ==========================================================
     // Closed リスト用の equals / hashCode
-    // 同じ状態（MarioState）で判断する
+    // 「同じ状態（MarioState）」かどうかで判断する
     // ==========================================================
     @Override
     public boolean equals(Object obj) {
