@@ -22,6 +22,7 @@ public class StateSensors {
     public int gapDistance;
     public int enemyDistance;
     public boolean enemyAhead;
+
     /** 簡易コンストラクタ（最低限の情報だけで作る場合） */
     public StateSensors(int row, int col, boolean onGround, boolean ableToJump) {
         this.row = row;
@@ -48,12 +49,12 @@ public class StateSensors {
         this.row = agent.getMarioEgoRow();
         this.col = agent.getMarioEgoCol();
 
-        // レベル地形（19×19）
+        // （将来のために LevelMap を作っておくが、今は使わなくてもよい）
         LevelMap map = new LevelMap(agent.getScene());
 
-        this.wallDistance  = detectWall(map, row, col);
-        this.gapDistance   = detectGap(map, row, col);
-        this.enemyDistance = detectEnemy(map, row, col);
+        this.wallDistance  = detectWall(agent, row, col);
+        this.gapDistance   = detectGap(agent, row, col);
+        this.enemyDistance = detectEnemy(agent, row, col);
         this.enemyAhead    = (enemyDistance >= 0);
     }
 
@@ -117,7 +118,6 @@ public class StateSensors {
 
         return found ? minDist : -1;
     }
-    
 
     // ==============================================================
     // デバッグ用

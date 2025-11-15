@@ -1,77 +1,150 @@
 package ch.idsia.agents.astar;
 
+import org.junit.Test;
 import static org.junit.Assert.*;
 
-import org.junit.Before;
-import org.junit.Test;
-
 /**
- * Simulator が「まともに動いているか」を確認するユニットテスト。
- *  ・平らな地面の上で
- *      - 右移動しても落ちない
- *      - ジャンプ／ダッシュジャンプしても落ちない
- *  くらいを確認する、ゆるめのテストにしている。
+ * Simulator の総合動作テスト。
  */
 public class SimulatorTest {
 
-    private LevelMap level;
-    private EnemyMap enemies;
-    private Simulator simulator;
-    private MarioState start;
-
-    @Before
-    public void setUp() {
-        // 5(行) x 10(列) のシンプルなステージ
-        // 最下行(4行目)だけを地面タイルにする
-        byte[][] scene = new byte[5][10];
-        for (int c = 0; c < 10; c++) {
-            scene[4][c] = 1;   // 何かしらのブロック（LevelMap側で SOLID 扱いになる）
-        }
-
-        level = new LevelMap(scene);
-        enemies = new EnemyMap(5, 10);
-        simulator = new Simulator(level, enemies, 4);
-
-        // row=3, col=1 にマリオが立っているとみなす（地面の1マス上）
-        start = new MarioState(
-                3,      // row
-                1,      // col
-                true,   // onGround
-                true,   // ableToJump
-                -1,     // wallDistance
-                -1,     // gapDistance
-                -1,     // enemyDistance
-                false   // enemyAhead
-        );
+    /** 空のマップを作る */
+    private LevelMap makeEmptyMap(int h, int w) {
+        byte[][] s = new byte[h][w];
+        return new LevelMap(s);
     }
 
+    /** 床（1 行だけブロック）を作る */
+    private LevelMap makeFlatGround(int h, int w) {
+        byte[][] s = new byte[h][w];
+        for (int c = 0; c < w; c++) {
+            s[h - 1][c] = 1; // 最下段にブロック
+        }
+        return new LevelMap(s);
+    }
+
+    /** 敵マップの空実装 */
+    private static class EmptyEnemyMap extends EnemyMap {
+        public EmptyEnemyMap(int h, int w) { super(h, w); }
+    }
+
+
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 1. 歩行テスト（右移動）
+    //━━━━━━━━━━━━━━━━━━━━━━━
     @Test
     public void testWalkRight() {
-        MarioState next = simulator.simulate(start, AStarPlanner.ACT_RIGHT);
+        LevelMap level = makeFlatGround(15, 30);
+        EnemyMap emap = new EmptyEnemyMap(15, 30);
+        Simulator sim = new Simulator(level, emap);
 
-        assertNotNull("右移動で即死してはいけない", next);
-        assertTrue("右移動で左に戻ってはいけない", next.col >= start.col);
-        assertEquals("平地なので高さは変わらない想定", start.row, next.row);
-        assertTrue("着地しているはず", next.onGround);
+        MarioState s = new MarioState(13, 5, true, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_RIGHT);
+        assertNotNull(next);
+        assertEquals(5 + 1, next.col);  // 横に 1 マス進む
+        assertEquals(13, next.row);     // 高さは変わらない
     }
 
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 2. 落下テスト
+    //━━━━━━━━━━━━━━━━━━━━━━━
     @Test
-    public void testJump() {
-        MarioState next = simulator.simulate(start, AStarPlanner.ACT_JUMP);
+    public void testFall() {
+        LevelMap level = makeFlatGround(15, 30);
+        EnemyMap emap = new EmptyEnemyMap(15, 30);
+        Simulator sim = new Simulator(level, emap);
 
-        assertNotNull("ジャンプで即死してはいけない", next);
-        assertTrue("ジャンプでも少なくとも右方向に進んでほしい", next.col >= start.col);
-        assertEquals("平地上に着地するので最終的な高さは元と同じ", start.row, next.row);
-        assertTrue("着地しているはず", next.onGround);
+        // 床より 3 マス上
+        MarioState s = new MarioState(10, 5, false, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_RIGHT);
+        assertNotNull(next);
+
+        // 最終的には row=13 の床に着地するはず
+        assertEquals(13, next.row);
     }
 
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 3. ジャンプ（短距離）
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    @Test
+    public void testShortJump() {
+        LevelMap level = makeFlatGround(20, 40);
+        EnemyMap emap = new EmptyEnemyMap(20, 40);
+        Simulator sim = new Simulator(level, emap);
+
+        MarioState s = new MarioState(18, 5, true, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_JUMP);
+        assertNotNull(next);
+
+        // 着地位置は元の位置より右＆地面にいる
+        assertTrue(next.col >= 5);
+        assertEquals(18, next.row);
+    }
+
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 4. ダッシュジャンプ（より遠くへ）
+    //━━━━━━━━━━━━━━━━━━━━━━━
     @Test
     public void testRunJump() {
-        MarioState next = simulator.simulate(start, AStarPlanner.ACT_JUMP_RUN);
+        LevelMap level = makeFlatGround(20, 40);
+        EnemyMap emap = new EmptyEnemyMap(20, 40);
+        Simulator sim = new Simulator(level, emap);
 
-        assertNotNull("ダッシュジャンプで即死してはいけない", next);
-        assertTrue("ダッシュジャンプなら右に少しは進んでいてほしい", next.col >= start.col);
-        assertEquals("平地上に着地するので最終的な高さは元と同じ", start.row, next.row);
-        assertTrue("着地しているはず", next.onGround);
+        MarioState s = new MarioState(18, 5, true, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_JUMP_RUN);
+        assertNotNull(next);
+
+        // ダッシュジャンプは短ジャンプより遠く飛ぶ
+        assertTrue(next.col > 5 + 1);
+    }
+
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 5. 壁衝突テスト
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    @Test
+    public void testWallCollision() {
+        byte[][] scene = new byte[20][40];
+        for (int r = 0; r < 20; r++) {
+            scene[r][10] = 1;  // col=10 に壁
+        }
+
+        LevelMap level = new LevelMap(scene);
+        EnemyMap emap = new EmptyEnemyMap(20, 40);
+        Simulator sim = new Simulator(level, emap);
+
+        MarioState s = new MarioState(18, 9, true, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_RIGHT);
+
+        // 壁があるので動作失敗（null）
+        assertNull(next);
+    }
+
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    // 6. 敵踏み（stomp）
+    //━━━━━━━━━━━━━━━━━━━━━━━
+    @Test
+    public void testStomp() {
+        LevelMap level = makeFlatGround(20, 40);
+        EnemyMap emap = new EnemyMap(20, 40);
+        emap.addEnemy(17, 7);  // 地面の 1 マス上に敵
+
+        Simulator sim = new Simulator(level, emap);
+
+        MarioState s = new MarioState(10, 5, false, true, -1, -1, -1, false);
+
+        MarioState next = sim.simulate(s, AStarPlanner.ACT_JUMP_RUN);
+        assertNotNull(next);
+
+        // 踏んだ敵は消えている
+        assertFalse(emap.hasEnemy(17, 7));
+
+        // 踏んだタイルに着地している
+        assertEquals(17, next.row);
+        assertEquals(7, next.col);
     }
 }

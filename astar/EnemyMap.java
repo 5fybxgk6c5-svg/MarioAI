@@ -1,42 +1,43 @@
 package ch.idsia.agents.astar;
 
 /**
- * A* シミュレーション用の超簡易 EnemyMap。
- * - 敵の位置はタイル単位で管理
- * - stomp により removeEnemy 可能
+ * Simulator / A* 用の簡易 EnemyMap。
+ * - マップは (row, col) のタイル座標
+ * - 敵がいれば true
+ * - stomp で removeEnemy される
+ *
+ * 本家 MarioAI の EnemyMap よりずっと単純化しているが、
+ * A* で「敵がいるタイルを踏む」チェックには十分。
  */
 public class EnemyMap {
 
-    private final boolean[][] enemy;
+    private final boolean[][] map;
 
     public EnemyMap(int rows, int cols) {
-        enemy = new boolean[rows][cols];
+        map = new boolean[rows][cols];
     }
 
-    /** MarioAI の enemies[][] から読み込む */
-    public EnemyMap(byte[][] enemiesScene) {
-        int h = enemiesScene.length;
-        int w = enemiesScene[0].length;
-        enemy = new boolean[h][w];
-
-        for (int r = 0; r < h; r++) {
-            for (int c = 0; c < w; c++) {
-                enemy[r][c] = enemiesScene[r][c] != 0;
-            }
-        }
+    /** 敵がいるか？ */
+    public boolean hasEnemy(int r, int c) {
+        if (r < 0 || r >= map.length) return false;
+        if (c < 0 || c >= map[0].length) return false;
+        return map[r][c];
     }
 
-    /** 敵が居るか */
-    public boolean hasEnemy(int row, int col) {
-        if (row < 0 || row >= enemy.length) return false;
-        if (col < 0 || col >= enemy[0].length) return false;
-        return enemy[row][col];
+    /** 敵を追加（テスト用 or 初期状態構築用） */
+    public void addEnemy(int r, int c) {
+        if (r < 0 || r >= map.length) return;
+        if (c < 0 || c >= map[0].length) return;
+        map[r][c] = true;
     }
 
-    /** 敵を消す（stomp） */
-    public void removeEnemy(int row, int col) {
-        if (row < 0 || row >= enemy.length) return;
-        if (col < 0 || col >= enemy[0].length) return;
-        enemy[row][col] = false;
+    /** stomp された敵を削除 */
+    public void removeEnemy(int r, int c) {
+        if (r < 0 || r >= map.length) return;
+        if (c < 0 || c >= map[0].length) return;
+        map[r][c] = false;
     }
+
+    public int getRows() { return map.length; }
+    public int getCols() { return map[0].length; }
 }

@@ -31,7 +31,7 @@ public class Simulator {
     private final int shortJumpVy0;
     private final int runJumpVy0;
 
-    /** 横方向スピード（px/ステップ） */
+    /** 横方向スピード（1 アクションあたりの移動量 px） */
     private final int walkVx;
     private final int runVx;
 
@@ -49,8 +49,13 @@ public class Simulator {
         this.shortJumpVy0 = -5 * unitPixels;  // -20px
         this.runJumpVy0   = -6 * unitPixels;  // -24px
 
-        this.walkVx = 1 * unitPixels;         // 4px/step
-        this.runVx  = 2 * unitPixels;         // 8px/step（ダッシュ）
+        // ★修正ポイント★
+        // 「1 アクション = おおよそ 1 タイル分進む」ようにする
+        // unitPixels=4 のとき:
+        //   walkVx = 16px (1 タイル)
+        //   runVx  = 24px (1.5 タイルくらい)
+        this.walkVx = 4 * unitPixels;   // = TILE_SIZE
+        this.runVx  = 6 * unitPixels;   // ≒ 1.5 タイル
     }
 
     // =========================================
@@ -170,14 +175,25 @@ public class Simulator {
 
             // ======== stomp チェック =========
             // 「下降中（vy > 0）」かつ「足元タイルに敵がいる」なら stomp とする
+         // ======== stomp チェック（テスト仕様に合わせた厳密なもの） ========
             if (vy > 0 && enemies != null) {
-                int stompRow = (y + TILE_SIZE - 1) / TILE_SIZE; // 足元付近
-                int stompCol = x / TILE_SIZE;
-                if (enemies.hasEnemy(stompRow, stompCol)) {
-                    enemies.removeEnemy(stompRow, stompCol);
-                    // 敵の上に乗ったとみなして、そのタイルに着地扱い
-                    int landingY = stompRow * TILE_SIZE;
-                    return makeNextStateFromPixels(s, x, landingY, true);
+
+                // 現在位置と次フレーム位置の間に敵マスがあるか確認
+                int curCol = x / TILE_SIZE;
+                int nextCol = nextX / TILE_SIZE;
+
+                // x方向に1タイルずつチェック（飛び越え対策）
+                int step = (nextCol > curCol ? 1 : -1);
+
+                for (int c = curCol; c != nextCol + step; c += step) {
+
+                    int stompRow = (y + TILE_SIZE - 1) / TILE_SIZE;
+
+                    if (enemies.hasEnemy(stompRow, c)) {
+                        enemies.removeEnemy(stompRow, c);
+                        int landingY = stompRow * TILE_SIZE;
+                        return makeNextStateFromPixels(s, c * TILE_SIZE, landingY, true);
+                    }
                 }
             }
 
